@@ -13,5 +13,14 @@ export default defineConfig({
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Opener-Policy": "same-origin",
     }
-  }
+  },
+  resolve: {
+    alias: {
+      // this is required to have the  cornerstone tools package working
+      // with vite. See for example:
+      //  https://github.com/cornerstonejs/cornerstone3D/issues/1071
+      // and cyclic dependencies in the cornerstone tools package issue
+      "@cornerstonejs/tools": "@cornerstonejs/tools/dist/umd/index.js"
+    },
+  },
 })

@@ -4,7 +4,6 @@ import {
   RenderingEngine,
   Enums,
   init as csInit,
-  Types,
   volumeLoader,
   setVolumesForViewports,
   setUseCPURendering,
@@ -32,7 +31,6 @@ const {
   ArrowAnnotateTool,
 } = cornerstoneTools;
 
-const { ViewportType } = Enums;
 const { MouseBindings } = csToolsEnums;
 
 //////////////////////////////////////////////
@@ -51,7 +49,7 @@ const toolsNames = [
   ArrowAnnotateTool.toolName,
 ];
 
-let selectedToolName = toolsNames[0];
+const selectedToolName = toolsNames[0];
 const toolGroupId = 'STACK_TOOL_GROUP_ID';
 
 //////////////////////////////////////////////
@@ -75,7 +73,8 @@ const viewportId3 = "CT_NIFTI_CORONAL";
 
 const viewportIds = [viewportId1, viewportId2, viewportId3];
 
-function setTools(renderingEngineId) {
+function setTools(renderingEngineId: string) {
+  console.log(selectedToolName);
   // Add tools to Cornerstone3D
   cornerstoneTools.addTool(WindowLevelTool);
   cornerstoneTools.addTool(PanTool);
