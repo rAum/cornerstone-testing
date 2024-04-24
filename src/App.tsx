@@ -6,7 +6,7 @@ import {
   init as csInit,
   volumeLoader,
   setVolumesForViewports,
-  setUseCPURendering,
+  // setUseCPURendering,
 } from "@cornerstonejs/core";
 import * as cornerstoneTools from '@cornerstonejs/tools';
 import { cornerstoneNiftiImageVolumeLoader } from "@cornerstonejs/nifti-volume-loader";
@@ -18,7 +18,7 @@ const {
   StackScrollMouseWheelTool,
   ZoomTool,
   Enums: csToolsEnums,
-  init: csTools3dInit, // ! imporant
+  init: csTools3dInit, // ! important
   ProbeTool,
   RectangleROITool,
   EllipticalROITool,
@@ -156,7 +156,7 @@ function setTools(renderingEngineId: string) {
 }
 
 async function setup(element1: any, element2: any, element3: any) {
-  setUseCPURendering(false); // chuje leca w kulki, nie dziala fallback do cpu :|
+  // setUseCPURendering(false); // sometimes fallback to cpu does not work (on my laptop with weak gpu)
   await csInit();
   await csTools3dInit();
   console.log("Cornerstone initialized");
@@ -223,6 +223,8 @@ function Cornerstone() {
   const id = useId();
   const ref = useRef(false);
 
+  // generate id s for viewportIds
+
   useEffect(() => {
     // to ensure this is only called once
     // I don't know how to reset this
@@ -231,62 +233,38 @@ function Cornerstone() {
     }
     ref.current = true;
 
-    let content = document.getElementById(id);
-    if (!content) {
-      return;
-    }
-    // ensure it is cleared
-    content.innerHTML = "";
+    const element1a = document.getElementById(viewportId1)
+    const element2a = document.getElementById(viewportId2)
+    const element3a = document.getElementById(viewportId3)
 
-    const viewportGrid = document.createElement("div");
-    viewportGrid.style.background = "#0000cc";
-    viewportGrid.style.display = "flex";
-    viewportGrid.style.flexDirection = "row";
-    viewportGrid.style.gap = "2px";
-    viewportGrid.style.width = "100%";
-    viewportGrid.style.height = "100%";
-    const size = "256px";
-
-    const element1 = document.createElement("div");
-    const element2 = document.createElement("div");
-    const element3 = document.createElement("div");
-    element1.style.width = size;
-    element1.style.height = size;
-    element1.id = viewportId1;
-    element2.style.width = size;
-    element2.style.height = size;
-    element2.id = viewportId2;
-    element3.style.width = size;
-    element3.style.height = size;
-    element3.id = viewportId3;
-
-    viewportGrid.appendChild(element1);
-    viewportGrid.appendChild(element2);
-    viewportGrid.appendChild(element3);
-
-    content!.appendChild(viewportGrid);
-
-    setup(element1, element2, element3);
+    setup(element1a, element2a, element3a);
   }, [id]);
 
   return (
     <>
-      <div
-        id={id}
-        style={{
-          background: "#032c0a",
-        }}
-      ></div>
+    <div className="flex flex-col lg:flex-row flex-grow min-w-full min-h-[90%] gap-1 bg-black">
+      <div className="border-green-800 border-2 relative flex-grow">
+        <div className="absolute top-0 left-0 w-full h-full" id={viewportId1}/>
+        <span className="absolute bottom-0 left-0 bg-green-800 text-white p-2 rounded-tr-md">AXIAL</span>
+      </div>
+
+      <div className="border-yellow-600 border-2 relative flex-grow">
+        <div className="absolute top-0 left-0 w-full h-full" id={viewportId2}/>
+        <span className="absolute bottom-0 left-0 bg-yellow-600 text-white p-2 rounded-tr-md">SAGITTAL</span>
+      </div>
+
+      <div className="border-red-800 border-2 relative flex-grow">
+        <div className="absolute top-0 left-0 w-full h-full" id={viewportId3}/>
+        <span className="absolute bottom-0 left-0 bg-red-800 p-2 text-white rounded-tr-md">CORONAL</span>
+      </div>
+    </div>
     </>
   );
 }
 
 function App() {
   return (
-    <>
-      <h1>Test cornerstone</h1>
       <Cornerstone />
-    </>
   );
 }
 
