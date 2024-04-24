@@ -299,7 +299,7 @@ function Cornerstone({volumeUrl, labelUrl}) {
 
   return (
     <>
-    <div className="flex flex-col lg:flex-row min-w-full min-h-[90vh] flex-grow gap-1 bg-black">
+    <div className="flex flex-col lg:flex-row min-w-full min-h-[90vh] flex-grow gap-1 bg-black" onContextMenu={(e) => e.preventDefault()}>
       <div className="border-green-800 border-2 relative flex-grow">
         <div className="absolute top-0 left-0 w-full h-full" id={viewportId1}/>
         <span className="absolute bottom-0 left-0 bg-green-800 text-white p-1 rounded-tr-md">AXIAL</span>
