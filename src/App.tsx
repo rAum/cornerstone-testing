@@ -29,6 +29,8 @@ const {
   AngleTool,
   CobbAngleTool,
   ArrowAnnotateTool,
+  SegmentationDisplayTool,
+  segmentation
 } = cornerstoneTools;
 
 const { MouseBindings } = csToolsEnums;
@@ -47,14 +49,15 @@ const toolsNames = [
   AngleTool.toolName,
   CobbAngleTool.toolName,
   ArrowAnnotateTool.toolName,
+  SegmentationDisplayTool.toolName,
 ];
 
 const selectedToolName = toolsNames[0];
 const toolGroupId = 'STACK_TOOL_GROUP_ID';
 
 //////////////////////////////////////////////
-const windowWidth = 400;
-const windowCenter = 40;
+const windowWidth = 2000;
+const windowCenter = 1000;
 
 const lower = windowCenter - windowWidth / 2.0;
 const upper = windowCenter + windowWidth / 2.0;
@@ -67,13 +70,13 @@ export function setCtTransferFunctionForVolumeActor({ volumeActor } : { volumeAc
 }
 //////////////////////////////////////////////
 
-const viewportId1 = "CT_NIFTI_AXIAL";
-const viewportId2 = "CT_NIFTI_SAGITTAL";
-const viewportId3 = "CT_NIFTI_CORONAL";
 
-const viewportIds = [viewportId1, viewportId2, viewportId3];
-
-function setTools(renderingEngineId: string) {
+let addedTools = false;
+function setTools() {
+  if (addedTools) {
+    return;
+  }
+  addedTools = true;
   console.log(selectedToolName);
   // Add tools to Cornerstone3D
   cornerstoneTools.addTool(WindowLevelTool);
@@ -89,6 +92,7 @@ function setTools(renderingEngineId: string) {
   cornerstoneTools.addTool(AngleTool);
   cornerstoneTools.addTool(CobbAngleTool);
   cornerstoneTools.addTool(ArrowAnnotateTool);
+  cornerstoneTools.addTool(SegmentationDisplayTool);
 
   // Define a tool group, which defines how mouse events map to tool commands for
   // Any viewport using the group
@@ -109,6 +113,7 @@ function setTools(renderingEngineId: string) {
   toolGroup.addTool(AngleTool.toolName);
   toolGroup.addTool(CobbAngleTool.toolName);
   toolGroup.addTool(ArrowAnnotateTool.toolName);
+  toolGroup.addTool(SegmentationDisplayTool.toolName);
 
   // Set the initial state of the tools, here we set one tool active on left click.
   // This means left click will draw that tool.
@@ -138,6 +143,8 @@ function setTools(renderingEngineId: string) {
     // As the Stack Scroll mouse wheel is a tool using the `mouseWheelCallback`
   // hook instead of mouse buttons, it does not need to assign any mouse button.
   toolGroup.setToolActive(StackScrollMouseWheelTool.toolName);
+  
+  toolGroup.setToolEnabled(SegmentationDisplayTool.toolName)
 
   toolGroup.setToolPassive(ProbeTool.toolName);
   toolGroup.setToolPassive(RectangleROITool.toolName);
@@ -148,65 +155,65 @@ function setTools(renderingEngineId: string) {
   toolGroup.setToolPassive(CobbAngleTool.toolName);
   toolGroup.setToolPassive(ArrowAnnotateTool.toolName);
 
-    // Set the tool group on the viewports
-    viewportIds.forEach((viewportId) =>
-    toolGroup.addViewport(viewportId, renderingEngineId)
-  );
-
+  return toolGroup;
 }
 
-async function setup(element1: any, element2: any, element3: any) {
-  // setUseCPURendering(false); // sometimes fallback to cpu does not work (on my laptop with weak gpu)
-  await csInit();
-  await csTools3dInit();
-  console.log("Cornerstone initialized");
-  volumeLoader.registerVolumeLoader("nifti", cornerstoneNiftiImageVolumeLoader);
- 
-  const niftiURL = new URL('../abd.nii.gz', import.meta.url).href;
-  console.log(niftiURL);
-  //const niftiURL = "https://ohif-assets.s3.us-east-2.amazonaws.com/nifti/MRHead.nii.gz";
-  const volumeId = "nifti:" + niftiURL;
 
+console.log("Initializing cornerstone");
+await csInit();
+console.log("Cornerstone initialized");
+await csTools3dInit();
+console.log("Setting up tools");
+const toolGroup = setTools();
+console.log("Setup tools done");
+volumeLoader.registerVolumeLoader("nifti", cornerstoneNiftiImageVolumeLoader);
+
+async function setup(viewportInputArray, volumeUrl: string, labelUrl: string) {
+  // setUseCPURendering(false); // sometimes fallback to cpu does not work (on my laptop with weak gpu)
+ 
+  console.log(labelUrl);
+  console.log(volumeUrl);
+  
   console.time("Loading volume");
+  const volumeId = "nifti:" + volumeUrl;
   const volume = await volumeLoader.createAndCacheVolume(volumeId);
   console.timeEnd("Loading volume");
+  const labelId = "nifti:" + labelUrl;
+  const segmentationId = "LESION_SEG_1";
+  console.log(labelId)
+  const label = await volumeLoader.createAndCacheVolume(labelId);
+  console.time("Load label")
+  console.timeEnd("Load label")
+
   console.log("Volume loaded");
   console.log(volume);
+  console.log(label);
 
-  const renderingEngineId = "myRenderingEngine";
+  const renderingEngineId = "render" + viewportInputArray[0].viewportId;
   const renderingEngine = new RenderingEngine(renderingEngineId);
 
-  const viewportInputArray = [
-    {
-      viewportId: viewportId1,
-      type: Enums.ViewportType.ORTHOGRAPHIC,
-      element: element1,
-      defaultOptions: {
-        orientation: Enums.OrientationAxis.AXIAL,
-      },
-    },
-    {
-      viewportId: viewportId2,
-      type: Enums.ViewportType.ORTHOGRAPHIC,
-      element: element2,
-      defaultOptions: {
-        orientation: Enums.OrientationAxis.SAGITTAL,
-      },
-    },
-    {
-      viewportId: viewportId3,
-      type: Enums.ViewportType.ORTHOGRAPHIC,
-      element: element3,
-      defaultOptions: {
-        orientation: Enums.OrientationAxis.CORONAL,
-      },
-    },
-  ];
   renderingEngine.setViewports(viewportInputArray);
   console.log("Setting up viewports done");
 
-  
-  setTools(renderingEngineId);
+  segmentation.addSegmentations([
+    {
+      segmentationId,
+      representation: {
+        // The type of segmentation
+        type: csToolsEnums.SegmentationRepresentations.Labelmap,
+        // The actual segmentation data, in the case of labelmap this is a
+        // reference to the source volume of the segmentation.
+        data: {
+          volumeId: labelId,
+        },
+      },
+    },
+  ]);
+
+  // Set the tool group on the viewports
+  viewportInputArray.forEach(({viewportId}) =>
+    toolGroup.addViewport(viewportId, renderingEngineId)
+  );
   console.log("Setting up tools done");
 
   setVolumesForViewports(
@@ -215,15 +222,30 @@ async function setup(element1: any, element2: any, element3: any) {
     viewportInputArray.map((v) => v.viewportId)
   );
 
-  renderingEngine.render();
+  // Add the segmentation representation to the toolGroup
+  await segmentation.addSegmentationRepresentations(toolGroupId, [
+    {
+      segmentationId,
+      type: csToolsEnums.SegmentationRepresentations.Labelmap,
+    },
+  ]);
 
+  renderingEngine.render();
 }
 
-function Cornerstone() {
+
+function Cornerstone({volumeUrl, labelUrl}) {
   const id = useId();
   const ref = useRef(false);
 
-  // generate id s for viewportIds
+  const ids = useId();
+  console.log(ids);
+
+  console.log(volumeUrl, labelUrl, id);
+
+  const viewportId1 = useId();
+  const viewportId2 = useId();
+  const viewportId3 = useId();
 
   useEffect(() => {
     // to ensure this is only called once
@@ -233,29 +255,64 @@ function Cornerstone() {
     }
     ref.current = true;
 
-    const element1a = document.getElementById(viewportId1)
-    const element2a = document.getElementById(viewportId2)
-    const element3a = document.getElementById(viewportId3)
+    const viewportInputArray = [
+      {
+        viewportId: viewportId1,
+        type: Enums.ViewportType.ORTHOGRAPHIC,
+        element: document.getElementById(viewportId1),
+        defaultOptions: {
+          orientation: Enums.OrientationAxis.AXIAL,
+        },
+      },
+      {
+        viewportId: viewportId2,
+        type: Enums.ViewportType.ORTHOGRAPHIC,
+        element: document.getElementById(viewportId2),
+        defaultOptions: {
+          orientation: Enums.OrientationAxis.SAGITTAL,
+        },
+      },
+      {
+        viewportId: viewportId3,
+        type: Enums.ViewportType.ORTHOGRAPHIC,
+        element: document.getElementById(viewportId3),
+        defaultOptions: {
+          orientation: Enums.OrientationAxis.CORONAL,
+        },
+      }];
 
-    setup(element1a, element2a, element3a);
-  }, [id]);
+    setup(viewportInputArray, volumeUrl, labelUrl);
+
+    const handleResize = () => {
+      console.log("Resizing");
+    }
+    console.log("Adding resize event listener");
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      // cleanup
+      console.log("Cleaning up! why it is called???");
+      console.log("Removing resize event listener");
+      window.removeEventListener('resize', handleResize);
+    }
+  }, [id, volumeUrl, labelUrl, viewportId1, viewportId2, viewportId3]);
 
   return (
     <>
-    <div className="flex flex-col lg:flex-row flex-grow min-w-full min-h-[90%] gap-1 bg-black">
+    <div className="flex flex-col lg:flex-row min-w-full min-h-[90vh] flex-grow gap-1 bg-black">
       <div className="border-green-800 border-2 relative flex-grow">
         <div className="absolute top-0 left-0 w-full h-full" id={viewportId1}/>
-        <span className="absolute bottom-0 left-0 bg-green-800 text-white p-2 rounded-tr-md">AXIAL</span>
+        <span className="absolute bottom-0 left-0 bg-green-800 text-white p-1 rounded-tr-md">AXIAL</span>
       </div>
 
       <div className="border-yellow-600 border-2 relative flex-grow">
         <div className="absolute top-0 left-0 w-full h-full" id={viewportId2}/>
-        <span className="absolute bottom-0 left-0 bg-yellow-600 text-white p-2 rounded-tr-md">SAGITTAL</span>
+        <span className="absolute bottom-0 left-0 bg-yellow-600 text-white p-1 rounded-tr-md">SAGITTAL</span>
       </div>
 
       <div className="border-red-800 border-2 relative flex-grow">
         <div className="absolute top-0 left-0 w-full h-full" id={viewportId3}/>
-        <span className="absolute bottom-0 left-0 bg-red-800 p-2 text-white rounded-tr-md">CORONAL</span>
+        <span className="absolute bottom-0 left-0 bg-red-800 p-1 text-white rounded-tr-md">CORONAL</span>
       </div>
     </div>
     </>
@@ -263,8 +320,13 @@ function Cornerstone() {
 }
 
 function App() {
+  const niftiURL = new URL('../pat3.nii.gz', import.meta.url).href;
+  const labelURL = new URL('../pat3_label.nii.gz', import.meta.url).href;
+
   return (
-      <Cornerstone />
+    <>
+      <Cornerstone volumeUrl={niftiURL} labelUrl={labelURL} />
+    </>
   );
 }
 
