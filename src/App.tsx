@@ -73,6 +73,8 @@ const viewportId3 = "CT_NIFTI_CORONAL";
 
 const viewportIds = [viewportId1, viewportId2, viewportId3];
 
+// create object to represents the tools and state
+
 function setTools(renderingEngineId: string) {
   console.log(selectedToolName);
   // Add tools to Cornerstone3D
@@ -155,7 +157,7 @@ function setTools(renderingEngineId: string) {
 
 }
 
-async function setup(element1: any, element2: any, element3: any) {
+async function setup(element1: HTMLDivElement, element2: HTMLDivElement, element3: HTMLDivElement) {
   setUseCPURendering(false); // chuje leca w kulki, nie dziala fallback do cpu :|
   await csInit();
   await csTools3dInit();
@@ -164,12 +166,25 @@ async function setup(element1: any, element2: any, element3: any) {
  
   const niftiURL = new URL('../abd.nii.gz', import.meta.url).href;
   console.log(niftiURL);
+  const raw = new URL('../raw-short.nii.gz', import.meta.url).href;
+  const label = new URL('../label-sm-label.nii.gz', import.meta.url).href;
+  console.log(raw);
   //const niftiURL = "https://ohif-assets.s3.us-east-2.amazonaws.com/nifti/MRHead.nii.gz";
-  const volumeId = "nifti:" + niftiURL;
+  const volumeId = "nifti:" + raw;//raw;
+  const labelId = "nifti:" + label;
+
 
   console.time("Loading volume");
   const volume = await volumeLoader.createAndCacheVolume(volumeId);
   console.timeEnd("Loading volume");
+  console.time("Volume label");
+  const labelVolume = await volumeLoader.createAndCacheDerivedSegmentationVolume(volumeId, 
+  {
+    volumeId: labelId,
+  });
+  console.log(labelVolume)
+  console.timeEnd("Volume label");
+  
   console.log("Volume loaded");
   console.log(volume);
 
@@ -223,6 +238,14 @@ function Cornerstone() {
   const id = useId();
   const ref = useRef(false);
 
+
+  useEffect(() => {
+    console.log("Cornerstone component mounted");
+    return () => {
+      console.log("Cornerstone component unmounted");
+    }
+  }, []);
+
   useEffect(() => {
     // to ensure this is only called once
     // I don't know how to reset this
@@ -273,9 +296,6 @@ function Cornerstone() {
     <>
       <div
         id={id}
-        style={{
-          background: "#032c0a",
-        }}
       ></div>
     </>
   );
@@ -284,7 +304,6 @@ function Cornerstone() {
 function App() {
   return (
     <>
-      <h1>Test cornerstone</h1>
       <Cornerstone />
     </>
   );
